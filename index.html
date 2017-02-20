@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <title>Statistics map</title>
+    <style>
+    	body {
+  		margin: 25px;
+		}
+
+		#map {
+ 		width: 900px;
+  		height: 600px;
+  		border: 1px solid silver;
+  		background: #E6E6E6;
+}
+    </style>
+  </head>
+
+  <body>
+    <h3>Land use statistics map</h3>
+    <div id="map" align = 'center'><!-- Map container --></div>
+
+    <script type="text/javascript">
+    //we specify the dimensions for the map container. We use the same
+	// width and height as specified in the CSS above.
+	var csvData = undefined;
+	var width = 900,
+    	height = 600;
+
+	// We create a SVG element in the map container and give it some dimensions.
+	var svg = d3.select('#map').append('svg')
+  				.attr('width', width)
+  				.attr('height', height);
+  	//set the color
+  	var color = d3.scale.linear()
+  				  .domain([d3.min(death),d3.max(death)])
+  				  .range(["#ffffbf","#d73027"]);
+
+  	// We define a geographical projection and set the initial zoom to show the features.
+	var projection = d3.geo.albersUsa()
+  	// The approximate scale factor was found through try and error
+  						.scale(1000)
+  	// Translate: Translate it to fit the container
+  						.translate([width/2, height/2]);
+
+	// We prepare a path object and apply the projection to it.
+	var path = d3.geo.path()
+  				 .projection(projection);
+
+  	d3.csv('police_killings.csv', function (error, data) {
+        if (error) throw error;
+ 		var map = {};
+    //change the column in csv file to a map
+    	for (var i = 0; i < data.length; i++) {
+        	var state = data[i].state;
+        	if (!map.hasOwnProperty(state)) {
+            	map[state] = 1;
+        	} else {
+            	map[state] += 1;
+            }
+        };
+
+    	var mapData = [];
+        for (var key in map) {
+            var pair = {};
+            pair['state'] = key;
+            pair['death'] = map[key];
+            mapData.push(pair);
+        };
+
+        
+
+
+    });
+
+  	console.log(mapData);
+	
+
+	// Load the features from the GeoJSON.
+	d3.json('UStates.json', function(error, features) {
+
+    // We add a <g> element to the SVG element and give it a class to style it later.
+    	svg.append('g')
+      	   .attr('class', 'features')
+    // D3 wants us to select the (non-existing) path objects first ...
+    	  .selectAll('path')
+      // ... and then enter the data. For each feature, a <path> element is added.
+      	.data(features.features)
+    	.enter().append('path')
+      // As "d" attribute, we set the path of the feature.
+      	.attr('d', path);
+
+});
+
+    </script>
+ 
+  </body>
+
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script src = "uStates.js"></script>
+    <style>
+        /*TODO*/
+        .state_path{
+        fill: none;
+        stroke: #a9a9a9;
+        stroke-width: 1;
+        }
+        .state_path:hover{
+        fill-opacity:0.5;
+        }
+        
+        .circles:hover{
+        fill-opacity:0.6;
+        }
+        #tooltip {   
+        position: absolute;           
+        text-align: center;
+        padding: 20px;             
+        margin: 10px;
+        font: 12px sans-serif;        
+        background: lightsteelblue;   
+        border: 1px;      
+        border-radius: 2px;           
+        pointer-events: none;
+        z-index:99999999；         
+        }
+        #tooltip h4{
+        margin:0;
+        font-size:14px;
+        }
+        #tooltip{
+        background:rgba(0,0,0,0.9);
+        border:1px solid grey;
+        border-radius:5px;
+        font-size:12px;
+        width:auto;
+        padding:4px;
+        color:white;
+        opacity:0;
+        }
+        #tooltip table{
+        table-layout:fixed;
+        }
+        #tooltip tr td{
+        padding:0;
+        margin:0;
+        }
+        #tooltip tr td:nth-child(1){
+        width:50px;
+        }
+        #tooltip tr td:nth-child(2){
+        text-align:center;
+        }
+        #map{
+            border-radius: 25px;
+            border: 4px solid #91cf60;
+            height: 630px;
+            width: 960px;
+            position: absolute;
+            top:80px;
+            left: 10px;
+        }
+       
+        #title{
+            position: absolute;
+            top:0px;
+            left: 350px;
+        }
+        .button {
+        position: absolute;
+        top:15px;
+        left:1410px;
+        display: inline-block;
+        border-radius: 4px;
+        background-color: #f4511e;
+        border: none;
+        color: #FFFFFF;
+        text-align: center;
+        font-size: 28px;
+        padding: 10px;
+        width: 170px;
+        height: 50px;
+        transition: all 0.5s;
+        cursor: pointer;
+        margin: 5px;
+        }
+        .button span {
+        cursor: pointer;
+        display: inline-block;
+        position: relative;
+        transition: 0.5s;
+        }
+        .button span:after {
+        content: '\00bb';
+        position: absolute;
+        opacity: 0;
+        top: 0;
+        right: -20px;
+        transition: 0.5s;
+        }
+        .button:hover span {
+        padding-right: 25px;
+        }
+        .button:hover span:after {
+        opacity: 1;
+        right: 0;
+        }
+
+    </style>
+
+<script>
+    
+   
+    dispatch.on('load.USChart', function (data) {
+        var map = {};
+
+        //change the column in csv file to a map
+        for (var i = 0; i < data.length; i++) {
+            var key = data[i].state.substring(1);
+            if (!map.hasOwnProperty(key)) {
+                map[key] = 1;
+            } else {
+                map[key] += 1;
+            }
+        };
+
+        //change the map to an array of map
+        var USData = mapdataprocess1(map);
+        //console.log(USData[0]);
+        loadmapwithdata("#statesvg", USData);
+        //uStates.draw("#statesvg", USData);
+        });
+    var path = uStates.getpath();
+    //console.log(path[0].id);
+    function loadmapwithdata(id, data){
+        var death = [];
+        for (var i=0; i< data.length; i++){
+            death.push(data[i].death);
+        };
+
+        //console.log(data[0].path);
+        //console.log(path[0].id);
+
+        function maptoolTip(d){
+            for (var i in data){
+            if(data[i].state == d.id){
+                return "<h4>"+d.id+"</h4><table>"+
+                    "<tr><td>Death</td><td>"+(data[i].death)+"</td></tr>"+
+                    "</table>"; 
+            }
+            }
+        };
+        function mouseOvermap(d){
+            d3.select("#tooltip").transition().duration(200).style("opacity", .9);              
+            d3.select("#tooltip").html(maptoolTip(d))  
+            .style("left", (d3.event.pageX) + "px")     
+            .style("top", (d3.event.pageY - 28) + "px");
+        };
+
+        function mouseOutmap(){
+            d3.select("#tooltip").transition().duration(500).style("opacity", 0);      
+        };
+
+        function mapcolor(d){
+            for(var i in data){
+                if(data[i].state == d.id){
+                    return color(data[i].death); 
+                }
+            }
+        };
+        function dataupdate(d){
+            var selected_state = d.id;
+            //console.log(csvData);
+            var map1 ={},
+                map2 ={};
+            //console.log(csvData[0].year == 1970);
+            for (var i=0; i<csvData.length; i++){
+                if(selected_state == csvData[i].state.substring(1)){
+                    var key1 =csvData[i].cause,
+                        key2 =csvData[i].year;
+                    if (!map1.hasOwnProperty(key1)){
+                        map1[key1] = 1;
+                    }else{
+                        map1[key1] +=1;
+                    };
+                    if (!map2.hasOwnProperty(key2)){
+                        map2[key2] = 1;
+                    }else{
+                        map2[key2] +=1;
+                    };
+                }
+            };
+            //console.log(map2[1980]);
+            //console.log(barData);
+            var bubbleData = bubbledataprocess1(map1);
+            var barData = bardataprocess2(map2);
+            //console.log(barData[0]);
+            d3.select(".bar").remove();
+            d3.select("#pieChart svg").remove();
+            loadPieChartWithProvidedData(bubbleData);
+            loadBarChartWithProvidedData(barData);
+        };
+        //?????????????????????????????????????????????????
+        svgMap = d3.select("#map").append('svg')
+                .attr("height", "600").attr("width", "960")
+                .attr("id", "statesvg");
+
+
+        var color = d3.scale.linear().domain([d3.min(death),d3.max(death)]).range(["#ffffbf","#d73027"]);
+        d3.select(id).selectAll(".state")
+        .data(path)
+        .enter().append("path").attr("class","state_path")
+        .attr("d",function(d){ return d.d;})
+        .style("fill", mapcolor
+            //return "#084594";
+        )
+        .on("mouseover", mouseOvermap).on("mouseout", mouseOutmap)
+        .on("click", dataupdate);
+    };
+    
+   
+    function mapdataprocess1(map){
+        var mapData = [];
+        for (var key in map) {
+            var pair = {};
+            pair['state'] = key;
+            pair['death'] = map[key];
+            pair['path'] = '';
+            mapData.push(pair);
+        };
+        return mapData;
+    };
+</script>
+</body>
+</html>
