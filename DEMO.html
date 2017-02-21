@@ -118,24 +118,11 @@
     
    
     dispatch.on('load.USChart', function (data) {
-        var map = {};
-
-        //change the column in csv file to a map
-        for (var i = 0; i < data.length; i++) {
-            var key = data[i].state.substring(1);
-            if (!map.hasOwnProperty(key)) {
-                map[key] = 1;
-            } else {
-                map[key] += 1;
-            }
-        };
-
-        //change the map to an array of map
-        var USData = mapdataprocess1(map);
         //console.log(USData[0]);
         loadmapwithdata("#statesvg", USData);
         //uStates.draw("#statesvg", USData);
         });
+    
     var path = uStates.getpath();
     //console.log(path[0].id);
     function loadmapwithdata(id, data){
@@ -174,39 +161,7 @@
                 }
             }
         };
-        function dataupdate(d){
-            var selected_state = d.id;
-            //console.log(csvData);
-            var map1 ={},
-                map2 ={};
-            //console.log(csvData[0].year == 1970);
-            for (var i=0; i<csvData.length; i++){
-                if(selected_state == csvData[i].state.substring(1)){
-                    var key1 =csvData[i].cause,
-                        key2 =csvData[i].year;
-                    if (!map1.hasOwnProperty(key1)){
-                        map1[key1] = 1;
-                    }else{
-                        map1[key1] +=1;
-                    };
-                    if (!map2.hasOwnProperty(key2)){
-                        map2[key2] = 1;
-                    }else{
-                        map2[key2] +=1;
-                    };
-                }
-            };
-            //console.log(map2[1980]);
-            //console.log(barData);
-            var bubbleData = bubbledataprocess1(map1);
-            var barData = bardataprocess2(map2);
-            //console.log(barData[0]);
-            d3.select(".bar").remove();
-            d3.select("#pieChart svg").remove();
-            loadPieChartWithProvidedData(bubbleData);
-            loadBarChartWithProvidedData(barData);
-        };
-        //?????????????????????????????????????????????????
+       
         svgMap = d3.select("#map").append('svg')
                 .attr("height", "600").attr("width", "960")
                 .attr("id", "statesvg");
@@ -223,19 +178,3 @@
         .on("mouseover", mouseOvermap).on("mouseout", mouseOutmap)
         .on("click", dataupdate);
     };
-    
-   
-    function mapdataprocess1(map){
-        var mapData = [];
-        for (var key in map) {
-            var pair = {};
-            pair['state'] = key;
-            pair['death'] = map[key];
-            pair['path'] = '';
-            mapData.push(pair);
-        };
-        return mapData;
-    };
-</script>
-</body>
-</html>
