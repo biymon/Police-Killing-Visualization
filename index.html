@@ -36,7 +36,7 @@
     <script type="text/javascript">
     //we specify the dimensions for the map container. We use the same
 	// width and height as specified in the CSS above.
-	var width = 900,
+	var width = 950,
     	height = 600;
 	// We create a SVG element in the map container and give it some dimensions.
 	var svgMap = d3.select('#map').append('svg')
@@ -98,6 +98,9 @@
         	.attr("class","state_path")
         	.attr("d",function(d){ return d.d;})
         	.style("fill", mapColor);
+
+
+}
   	};
 
 	d3.csv('police_killings.csv', function (error, data) {
