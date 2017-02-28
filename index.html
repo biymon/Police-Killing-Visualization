@@ -13,10 +13,55 @@
 		.state_path{
         fill: none;
         stroke: #a9a9a9;
-        stroke-width: 1;
+        stroke-width: 2;
         }
         .state_path:hover{
         fill-opacity:0.5;
+        }
+
+
+.tooltip p {
+    margin: 5px;
+}
+
+    #tooltip {   
+        position: absolute;           
+        text-align: center;
+        padding: 20px;             
+        margin: 10px;
+        font: 12px sans-serif;        
+        background: lightsteelblue;   
+        border: 1px;      
+        border-radius: 2px;           
+        pointer-events: none;
+        z-index:99999999；         
+        }
+        #tooltip h4{
+        margin:0;
+        font-size:14px;
+        }
+        #tooltip{
+        background:rgba(0,0,0,0.9);
+        border:1px solid grey;
+        border-radius:5px;
+        font-size:12px;
+        width:auto;
+        padding:4px;
+        color:white;
+        opacity:0;
+        }
+        #tooltip table{
+        table-layout:fixed;
+        }
+        #tooltip tr td{
+        padding:0;
+        margin:0;
+        }
+        #tooltip tr td:nth-child(1){
+        width:50px;
+        }
+        #tooltip tr td:nth-child(2){
+        text-align:center;
         }
         
         #map{
@@ -33,6 +78,7 @@
   <body>
     <h3>Land use statistics map</h3>
     <div id="map" align = 'center'><!-- Map container --></div>
+     <div id = "tooltip"></div>
     <script type="text/javascript">
     //we specify the dimensions for the map container. We use the same
 	// width and height as specified in the CSS above.
@@ -82,7 +128,7 @@
 
        var color = d3.scaleLinear()
        				.domain([d3.min(death),d3.max(death)])
-       				.range(["#ffffbf","#d73027"]); 
+       				.range(["#E9967A","#670a08"]); 
 
        	function mapColor(d){
             for(var i in data){
@@ -97,22 +143,39 @@
         	.enter().append("path")
         	.attr("class","state_path")
         	.attr("d",function(d){ return d.d;})
-        	.style("fill", mapColor);
+        	.style("fill", mapColor)
+          .on("mouseover", mouseOvermap)
+          .on("mouseout", mouseOutmap);
+//margin 0 front siza
+        function maptoolTip(d){
+            for (var i in data){
+            if(data[i].state == d.id){
+                return "<h4>"+d.id+"</h4><table>"+
+                  "<tr><td>Death</td><td>"+(data[i].death)+"</td></tr>"+"</table>"; 
+                    //return "<p>Death rate per 100,000 population: " + d.id+ " %"+ "</p>"
+            }
+          }
+        };
 
+        function mouseOvermap(d){
+           d3.select("#tooltip").transition().duration(200).style("opacity", .9);              
+            d3.select("#tooltip").html(maptoolTip(d))  
+            .style("left", (d3.event.pageX) + "px")     
+            .style("top", (d3.event.pageY - 28) + "px");
+        };
 
-}
-  	};
+        function mouseOutmap(){
+            d3.select("#tooltip")
+            .transition().duration(500).style("opacity", 0);      
+        };
+};
 
 	d3.csv('police_killings.csv', function (error, data) {
         	if (error) throw error;
         	var mapData = mapDataGenerate(data);
         	drawMap(mapData);
         	//console.log(mapData);
-    });
-
-  	
-
-
+    }); 	
     </script>
  
   </body>
