@@ -3,100 +3,150 @@
   <head>
     <meta charset="UTF-8">
     <script src="https://d3js.org/d3.v4.min.js"></script>
-    <script src = "uStates.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
     <title>Statistics map</title>
     <style>
     	body {
-  		margin: 25px;
-		}
+      font-family: "Helvetica Neue", Helvetica, sans-serif;;
+      font-size: 12px;
+      width: 960px;
+      height: 500px;
+      margin: 20px auto;
+      }
 
-		.state_path{
-        fill: none;
-        stroke: #a9a9a9;
-        stroke-width: 2;
-        }
-        .state_path:hover{
-        fill-opacity:0.5;
-        }
+		.states {
+    stroke: #fff;
+    fill: none;
+    pointer-events: none;
+    }
+    .counties {
+    stroke: #fff;
+    fill: green;
+    stroke-width: .3px;
+    }
+    .tooltip {
+    background: rgba(0, 0, 0, 0.85);
+    color: #f9f9f9;
+    padding: 8px;
+    }
+    .tooltip h3 {
+    margin: 0px 0px 8px;
+    }
 
+    .state-land {
+      fill: grey;
+      stroke-width: 1.5px;
+      stroke: white;
+    }
 
-.tooltip p {
-    margin: 5px;
-}
-
-    #tooltip {   
-        position: absolute;           
-        text-align: center;
-        padding: 20px;             
-        margin: 10px;
-        font: 12px sans-serif;        
-        background: lightsteelblue;   
-        border: 1px;      
-        border-radius: 2px;           
-        pointer-events: none;
-        z-index:99999999；         
-        }
-        #tooltip h4{
-        margin:0;
-        font-size:14px;
-        }
-        #tooltip{
-        background:rgba(0,0,0,0.9);
-        border:1px solid grey;
-        border-radius:5px;
-        font-size:12px;
-        width:auto;
-        padding:4px;
-        color:white;
-        opacity:0;
-        }
-        #tooltip table{
-        table-layout:fixed;
-        }
-        #tooltip tr td{
-        padding:0;
-        margin:0;
-        }
-        #tooltip tr td:nth-child(1){
-        width:50px;
-        }
-        #tooltip tr td:nth-child(2){
-        text-align:center;
-        }
-        
-        #map{
-            height: 630px;
-            width: 960px;
-            position: absolute;
-            top:80px;
-            left: 10px;
-        }
-
+    .county-land {
+      stroke: white;
+      stroke-width: .3px;
+    }
     </style>
   </head>
 
   <body>
-    <h3>Land use statistics map</h3>
+    <h3>Death map</h3>
     <div id="map" align = 'center'><!-- Map container --></div>
-     <div id = "tooltip"></div>
+    <div id = "tooltip"></div>
     <script type="text/javascript">
-    //we specify the dimensions for the map container. We use the same
-	// width and height as specified in the CSS above.
+    //we specify the dimensions for the map container. 
+
 	var width = 950,
-    	height = 600;
+    	height = 500;
 	// We create a SVG element in the map container and give it some dimensions.
-	var svgMap = d3.select('#map').append('svg')
+	var svg = d3.select('#map').append('svg')
   				.attr('width', width)
-  				.attr('height', height)
+  				.attr('height', height);
+  var map = svg.append('g')
+          .style('stroke-width', '1.5px');
 
-  	//set the color
-  	
-  	// We define a geographical projection and set the initial zoom to show the features.
-	
+  //set the color
+  var color = d3.scaleLinear()
+              //.domain([d3.min(death),d3.max(death)])
+              .domain([10,100])
+              .range(["#fde0dd","#fcc5c0","#fa9fb5","#f768a1","#dd3497","#ae017e","#7a0177","#49006a"]); 
+
+  // set the tooltips for mouse hover
+  var tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("z-index", "10")
+    .style("visibility", "hidden");
+
+  //A queue evaluates zero or more deferred asynchronous tasks with configurable concurrency
+  d3.queue()
+    .defer(d3.csv, 'police_killings.csv')
+    .defer(d3.json, 'us.json')
+    .await(ready);
+  // We define a geographical projection and set the initial zoom to show the features.
+  var projection = d3.geoAlbersUsa()
+                    .scale(1080)
+                    .translate([width/2, height/2]);
+
+  var path = d3.geoPath()
+               .projection(projection);
+
+  // execute after loading the csv and us.json data
+	function ready(error, deaths,topology) {
+      if (error) return console.warn(error);
+/*
+  deathsByFips = {};
+  deaths.forEach(function(d) {
+    d.Deaths = +d.Deaths;
+    d.Population = +d.Population;
+    d["Crude Rate"] = +(d["Crude Rate"].replace(" (Unreliable)", ""));
+    deathsByFips[+d["County Code"]] = d;
+*/
+//convert csv data to the format as mapData=[{'state':'xxxx','death':1234},{},{}...]
+      var statStateDeath = {};
+      //change the column in csv file to a map
+      for (var i = 0; i < deaths.length; i++) {
+          var state = deaths[i].state;
+          if (!statStateDeath.hasOwnProperty(state)) {
+              statStateDeath[state] = 1;
+          } else {
+              statStateDeath[state] += 1;
+            }
+        };
+
+      var mapData = [];
+        for (var state in statStateDeath) {
+            var pair = {};
+            pair['state'] = state;
+            pair['death'] = statStateDeath[state];
+            mapData.push(pair);
+          };
+//append path to map
+      map.selectAll('.state-land')
+         .data(topojson.feature(topology, topology.objects.states).features)
+         .enter().append('path')
+         .attr('d', path)
+         .attr('class', 'state-land');
+         //.on('click', function(state) {clickState.call(this, state, topology, countyData);
+          //});
+
+  };
+
+  
 	// We prepare a path object and apply the projection to it.
-	var path = uStates.getpath();
+	//var path = uStates.getpath();
+  /*var subset = topojson.feature(us, us.objects.counties)
+              .features.filter(function(d) {
+                return d.id in deathsByFips;
+                });
+  /*var projection = d3.geo.mercator()
+  .scale(1500)
+  // Center the Map in Colombia
+  .center([-74, 4.5])
+  .translate([width / 2, height / 2]);
 
-  	function mapDataGenerate(d) {
+var path = d3.geo.path()
+  .projection(projection);*/
+
+ /* 	function mapDataGenerate(d) {
   		var map = {};
     	//change the column in csv file to a map
     	for (var i = 0; i < d.length; i++) {
@@ -175,7 +225,7 @@
         	var mapData = mapDataGenerate(data);
         	drawMap(mapData);
         	//console.log(mapData);
-    }); 	
+    }); 	*/
     </script>
  
   </body>
