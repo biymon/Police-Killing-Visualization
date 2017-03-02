@@ -16,9 +16,20 @@
       }
 /*geo map stroke*/
 		.states {
-    stroke: #fff;
+    stroke: #999;
     fill: none;
     pointer-events: none;
+    }
+
+    .state-land{
+    stroke: #999;
+    fill: green;
+    stroke-width: 1.5px;
+    }
+
+    .county-land {
+      stroke: white;
+      stroke-width: .3px;
     }
 /*legend position*/
    .legend {
@@ -37,12 +48,6 @@
    shape-rendering: crispEdges;
    }
 
-    .usageo {
-    stroke: #999;
-    fill: green;
-    stroke-width: 1.5px;
-    }
-
 /*tooltip color*/
     .tooltip {
     background: rgba(0, 0, 0, 0.85);
@@ -60,11 +65,12 @@
     <div id="map" align = 'center'><!-- Map container --></div>
     <script type="text/javascript">
     
-  //specify the dimensions for the map container. 
+//specify the dimensions for the map container. 
 	var width = 960,
-      active = d3.select(null),
+      active = d3.select(null),//the status of zoom event
     	height = 500;
-//used to draw map
+
+//used to set the color range
   var highColor = "#ae017e",
       lowColor = "#fcc5c0";
 
@@ -77,11 +83,11 @@
 
   // set the tooltips for mouse hover
   var tooltip = d3.select("body")
-    .append("div")
-    .attr("class", "tooltip")
-    .style("position", "absolute")
-    .style("z-index", "10")
-    .style("visibility", "hidden");
+                .append("div")
+                .attr("class", "tooltip")
+                .style("position", "absolute")
+                .style("z-index", "10")
+                .style("visibility", "hidden");
 
   //A queue evaluates zero or more deferred asynchronous tasks with configurable concurrency
   d3.queue()
@@ -92,7 +98,7 @@
 
   // We define a geographical projection and set the initial zoom to show the features.
   var projection = d3.geoAlbersUsa()
-                    .scale(900)//adjust the size of the whole map
+                    .scale(1000)//adjust the size of the whole map
                     .translate([width/2, height/2]);
 
   var path = d3.geoPath()
@@ -105,7 +111,17 @@
   d[1] = +d.latitude;
   d.arcs = {type: "MultiLineString", coordinates: []};
   return d;
-}
+  }
+
+  //reset zoom event, set the active status as false, waiting for click
+  function reset() {
+    active.classed('active', false);
+    active = d3.select(null);
+    //transition back to the us national map
+    map.transition().duration(750)
+       .style("stroke-width", "1.5px")
+       .attr("transform", "");
+     }
 
   // execute after loading the csv, us.json ,us-states data, the parameters order must correspond to the defer order. This is the main function when drawing a map.
 	function ready(error, deaths, topology, UStates) {
@@ -116,15 +132,10 @@
 //statStateDeath = {'Alabama':{'death':50,'population':40,'white-share':45%,'black-share':45%,'hisoanic-share':10%},'CA':{},....}
       var statStateDeath = {};
 
-      function updateRate(oldPop, oldRate, addPop, addPopRate){
-        var newRate = ((oldPop * oldRate) + (addPop * addPopRate))/(oldPop + addPop);
-        return newRate.toFixed(1);
-      };
-
       //change the column in csv file to a map
       for (var i = 0; i < deaths.length; i++) {
         //push the longitude and latitude in each line;
-          deaths[i].arcs.coordinates.push(deaths[i]);
+         deaths[i].arcs.coordinates.push(deaths[i]);
 
           var state = deaths[i].state;
           if (!statStateDeath.hasOwnProperty(state)) {
@@ -187,11 +198,16 @@
               .range([lowColor,highColor]); 
 
       function mapColor(d){
+            var hasColor = 0;
             for(var i in mapData){
                 if(mapData[i].state == d.properties.name){
-                    return color(mapData[i].death); 
+                    hasColor = 1;
+                    return color(mapData[i].death);  
                 }
             }
+            if (hasColor == 0){
+              return '#fff'
+             }
         };
 //set color ends
 
@@ -203,34 +219,28 @@
       .attr("class", "death-dots")
       .attr("d", path);
 
+      //append states outline to map
+        svg.append("path")
+           .datum(topojson.mesh(topology, topology.objects.states, function(a, b) { 
+                  return a.id !== b.id; }))
+           .attr("class", "states")
+           .attr("d", path);
+
 //append path to map
-      /*map.selectAll('.state-land')
-         .data(topojson.feature(topology, topology.objects.states).features)
-         .enter().append('path')
-         .attr('d', path)
-         .attr('class', 'state-land')
-         .style("fill", mapColor);
-         //.on('click', function(state) {clickState.call(this, state, topology, countyData);
-          //});*/
-      map.attr("transform", "translate(0,35)")
-         .attr("class", ".usageo")
-         .selectAll(".usageo")//path
+      map.selectAll(".state-land")//path
+         .attr("class", "state-land")
         .data(topojson.feature(UStates, UStates.objects["usa.geo"]).features)
         .enter().append("path")
         .style("fill", mapColor)
         .attr("d", path)
         //.on('click', function(state) {clickState.call(this, state, topology, countyData);})
-        .on("mouseover", mouseOverMap)
-        .on("mousemove", function() {
-                return tooltip.style("top", (d3.event.pageY-52) + "px").style("left", (d3.event.pageX+18) + "px");})
-        .on("mouseout", function() {
-                tooltip.style("visibility", "hidden")
-                d3.selectAll(".usageo path")
-                  .style("opacity", 1);
-                d3.selectAll(".states")
-                  .style("opacity", 1);});
+        //.on("mouseover", mouseOverMap)
+        //.on("mousemove", mouseMove)
+        //.on("mouseout", mouseOut);
 
-  /*/zoom out each state
+
+
+  //zoom out each state
         function clickState(state, topology, countyData) {
             if (active.node() == this) return reset();
             active.classed('active', false);
@@ -244,23 +254,56 @@
             scale = .9 / Math.max(dx / width, dy / height),
             translate = [width / 2 - scale * x, height / 2 - scale * y];
 
-        map.transition().duration(750)
-            .style('stroke-width', 1.5 / scale + 'px')
-            .attr('transform', 'translate(' + translate +')scale(' + scale + ')');
+            map.transition().duration(750)
+               .style('stroke-width', 1.5 / scale + 'px')
+               .attr('transform', 'translate(' + translate +')scale(' + scale + ')');
 
-        var counties = map.selectAll('.county-land')
-            .call(drawCounties, topology, state.id, countyData);
-        }*/
+            var counties = map.selectAll('.county-land')
+                           .call(drawCounties, topology, state.id, countyData);
+        };
 
+      function drawCounties(selection, topology, stateFips, countyData) {
 
+        // Copy the GeometryCollection object (don't want to pass reference)
+            var countiesGeo = Object.create(topology.objects.counties);
 
-  //mouseover event
+        // Filter down to the counties within active state
+            countiesGeo.geometries = topology.objects.counties.geometries
+                                    .filter(function(county) {
+                          return fipsMatch(county.id, stateFips);
+                    });
+
+            var counties = selection.data(topojson.feature(topology, countiesGeo).features)
+
+            counties.enter().append('path')
+                    .attr('class', 'county-land')
+                    .on('click', reset);
+
+            counties.attr('opacity', 0)
+                    .attr('d', path)
+                    .style('fill', function(d) {
+                        var lq = countyData.filter(function(county) { 
+                                         return county.id === d.id; })
+                                  .map(function(county) { return county.lq; });
+                      
+                        return color(lq);
+                    })
+                    .transition().duration(750)
+                    .attr('opacity', 1);
+
+            counties.exit()
+                    .transition().duration(750)
+                    .attr('opacity', 0)
+                    .remove();
+      };
+
+    //mouseover event
       function mouseOverMap(d){
         var val = statStateDeath[d.properties.name];
-        var fill_color = color(val['death']);
+        var fill_color = color(val["death"]);
         tooltip.html("");
         tooltip.style("visibility", "visible")
-          .style("border", "3px solid " + fill_color);
+               .style("border", "3px solid " + fill_color);
        //h3 set the margin ,append all the txt show in label  
         tooltip.append("h3").text(d.properties.name);
         tooltip.append("div")
@@ -271,15 +314,40 @@
           .text("BlackPopShare: " + val["black-share"] + ", BlackDeathsShare: "+ val["black-death"]);
         tooltip.append("div")
           .text("HisoanicPopShare: " + val["hisoanic-share"] + ", HisoanicDeathsShare: "+ val["hispanic-death"]);
-}
-        d3.selectAll(".usageo path")
+
+        d3.selectAll(".state-land path")
           .style("opacity", 0.3)
           .style("stroke", null);
-        
+        d3.select(this)
+          .style("opacity", 1)
+          .style("stroke", "#999")
+          .raise();
         d3.selectAll(".states")
           .style("opacity", 0);
+          };
+  //hover event: Mouse Move and Move Out
+      function mouseMove(d) {
+              return tooltip.style("top", (d3.event.pageY-52) + "px")
+                            .style("left", (d3.event.pageX+18) + "px");
+      };
+    
+      function mouseOut(d) {
+            tooltip.style("visibility", "hidden")
+            d3.selectAll(".state-land path")
+              .style("opacity", 1);
+            d3.selectAll(".states")
+              .style("opacity", 1);
+      };
 
-      // add a legend
+      drawLegend(death);
+
+};
+      function updateRate(oldPop, oldRate, addPop, addPopRate){
+        var newRate = ((oldPop * oldRate) + (addPop * addPopRate))/(oldPop + addPop);
+        return newRate.toFixed(1);
+      };
+
+    function drawLegend(death) {
       var w = 140, h = 300;
 
       var key = d3.select("body")
@@ -302,7 +370,7 @@
       .attr("stop-color", highColor)
       .attr("stop-opacity", 1);
       
-     legend.append("stop")
+      legend.append("stop")
       .attr("offset", "100%")
       .attr("stop-color", lowColor)
       .attr("stop-opacity", 1);
@@ -311,20 +379,20 @@
       .attr("width", w - 100)
       .attr("height", h)
       .style("fill", "url(#gradient)")
-      .attr("transform", "translate(0,10)");
+      .attr("transform", "translate(20,10)");
 
-     var y = d3.scaleLinear()
+      var y = d3.scaleLinear()
       .range([h, 0])
       .domain([d3.min(death),d3.max(death)]);
 
-    var yAxis = d3.axisRight(y);
+      var yAxis = d3.axisRight(y);
 
-    key.append("g")
+      key.append("g")
       .attr("class", "y axis")
-      .attr("transform", "translate(41,10)")
+      .attr("transform", "translate(61,10)")
       .call(yAxis)
-    //legend ends
-};
+    };
+
     </script>
  
   </body>
