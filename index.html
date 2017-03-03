@@ -248,9 +248,9 @@
       map.selectAll(".state-land")//path
          .attr("class", "state-land")
          .data(topojson.feature(UStates, UStates.objects["usa.geo"]).features)
-        .enter().append("path")
-        .style("fill", mapColor)
-        .attr("d", path)
+         .enter().append("path")
+         .style("fill", mapColor)
+         .attr("d", path)
         .on('click', function(state) {clickState.call(this, state, deaths);})
         .on("mouseover", mouseOverMap)
         .on("mousemove", mouseMove)
@@ -356,8 +356,17 @@
       .call(yAxis)
     };
 //draw parallel function, data is filted by the map
-      function clickState(state, data){ 
-      //console.log(this)
+      function clickState(state, csvData){ 
+      var selectedState = state.properties['name'],
+      //console.log(state.properties['name'])
+          data = [];
+
+      for (var i = 0; i < csvData.length; i++) {
+        //push the longitude and latitude in each line;
+         if(csvData[i].state == selectedState){
+            data.push(csvData[i])
+          }
+      }
 
           var x = d3.scaleBand().rangeRound([0,width]).padding(1),
               y = {},
@@ -369,10 +378,13 @@
               foreground;
 
   //console.log(state);
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
+
+d3.select("#parallelSVG").remove();
+ var parallel = d3.select("body").append("svg")
+                  .attr("width", width + margin.left + margin.right)
+                  .attr("height", height + margin.top + margin.bottom)
+                  .attr("id","parallelSVG")
+                  .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 
@@ -388,7 +400,7 @@ var svg = d3.select("body").append("svg")
 
  extents = dimensions.map(function(p) { return [0,0]; });
   // Add grey background lines for context.
-  background = svg.append("g")
+  background = parallel.append("g")
       .attr("class", "background")
     .selectAll("path")
       .data(data)
@@ -396,7 +408,7 @@ var svg = d3.select("body").append("svg")
       .attr("d", path);
 
   // Add blue foreground lines for focus.
-  foreground = svg.append("g")
+  foreground = parallel.append("g")
       .attr("class", "foreground")
     .selectAll("path")
       .data(data)
@@ -406,7 +418,7 @@ var svg = d3.select("body").append("svg")
 //console.log(dimensions);  
   
   // Add a group element for each dimension.
-  var g = svg.selectAll(".dimension")
+  var g = parallel.selectAll(".dimension")
       .data(dimensions)
     .enter().append("g")
       .attr("class", "dimension")
